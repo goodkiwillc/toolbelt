@@ -10,6 +10,7 @@ packages = [{include = "good_toolbelt"}]
 python = "^3.11"
 pyyaml = "^6.0.1"
 ipykernel = "^6.24.0"
+requests = "^2.31.0"
 
 
 [build-system]
