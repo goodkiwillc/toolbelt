@@ -1,6 +1,22 @@
 import typing
 import requests
 import urllib.parse
+from pathlib import Path
+
+
+with open(
+    Path(__file__).parent.parent.joinpath("data", "short_url_providers.txt"),
+    "r",
+) as f:
+    SHORT_URLS = set(f.read().splitlines())
+
+
+def is_short_url(url: str) -> bool:
+    """Check if a url is a short url"""
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.netloc in SHORT_URLS:
+        return True
+    return False
 
 
 def follow_redirects(
@@ -26,6 +42,10 @@ class ParsedURL(typing.NamedTuple):
     path: str
     query: typing.Dict[str, typing.List[str]]
     fragment: str
+    original: str = ""
+
+    def __hash__(self):
+        return hash(self.as_string)
 
     @classmethod
     def from_string(cls, url: str, force_ssl: bool = True):
@@ -36,6 +56,7 @@ class ParsedURL(typing.NamedTuple):
             path=parsed.path,
             query=urllib.parse.parse_qs(parsed.query),
             fragment=parsed.fragment,
+            original=url,
         )
 
     @property
@@ -52,7 +73,36 @@ class ParsedURL(typing.NamedTuple):
 
     @property
     def clean(self):
-        keep_params = ('q', 'id',)
+        ignore_parts = [
+            'utm',
+            'clid',
+            'src',
+            'ncid',
+            'cmp',
+            'cid',
+            'share',
+            'ref',
+            'source',
+            'email',
+            'smid',
+            'type',
+            'via',
+            'code'
+        ]
+
+        ignore_whole = [
+            's',
+            'feature',
+            'amount',
+            'sr',
+            'mod',
+            'm',
+            'taid',
+            't',
+            'mibextid',
+
+        ]
+
         return urllib.parse.urlunsplit(
             (
                 self.scheme,
@@ -60,7 +110,8 @@ class ParsedURL(typing.NamedTuple):
                 self.path,
                 urllib.parse.urlencode({
                     k: v[0] for k, v in self.query.items()
-                    if k in keep_params
+                    if k.lower() not in ignore_whole and
+                    not any(part in k.lower() for part in ignore_parts)
                 }),
                 ''
             )
